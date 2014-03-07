@@ -70,38 +70,27 @@ $(function() {
 
 		inputText = $('.location').val().trim();
 
-		infoWindow.close();
-		marker.setVisible(false);
 		var place = autocomplete.getPlace();
 		if (!place.geometry) {
 			return; // if there's no lat/lng, we're lost!
 		}
 
 		map.setCenter(place.geometry.location);
-
-		marker.setIcon(({
-			url: 'http://maps.gstatic.com/mapfiles/place_api/icons/geocode-71.png',
-			scaledSize: new google.maps.Size(48, 48)
-		}));
-		marker.setPosition(place.geometry.location);
-		marker.setVisible(true);
-
-		infoWindow.setContent(place.name);
-		infoWindow.open(map, marker);
 	});
 	
 	// add click listener to SPIN button
 	$('.spin').click(function(){
+		$('.spin').removeClass("spinEffect");
+		setTimeout(function(){$('.spin').addClass("spinEffect")},0);
 		if ($(".location").val().trim() == "") {
 			alert("Please enter a location");
 			return false;
 		} 
-
 		if(!inputText || $('.location').val().trim() != inputText) {
 			inputText = $('.location').val().trim();
 			locationSearch(inputText);
 		} else {
-			getRestaurantData(map, marker.getPosition());
+			getRestaurantData(map, map.getCenter());
 		}
 	});
 
@@ -113,9 +102,20 @@ $(function() {
 // in the HTML element with class="map-container".
 // Returns that map object.
 function setupMap() {
+	var myStyles = [
+		{
+			featureType: "poi",
+			elementType: "labels",
+			stylers: [
+				{ visibility: "off" }
+			]
+		}
+	];
+
 	map = new google.maps.Map($('.map-container')[0], {
 		mapTypeId: google.maps.MapTypeId.ROADMAP,
-		zoom: 15 // at 15 we can see city names
+		zoom: 15, // at 15 we can see city names
+		styles: myStyles
 	});
 
 	return map;
