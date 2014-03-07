@@ -1,53 +1,58 @@
 // google-places-manager.js
-// Group 4 - INFO 343 A
-// Restaurant Roulette
+// Cam Scotland
+// Restaurant Roulette Reskin
 //
 // Randomly select a restaurant based on parameters 
 // like location, price, rating, etc. using Google's
 // Places API (specifically Places Searches)
 // https://developers.google.com/places/documentation/
-
-/*
-	TODO
-	* align the infowindow popup
-	* it's too zoomed in after a search
-	* make the location box bigger
-	** make the current location marker more unique (change icon maybe?)
-	* try using var place = autocomplete.getPlace(); instead of textSearch() fnc
-	* filters? -- maybe research about filters is more realistic
-
-	https://developers.google.com/maps/documentation/javascript/examples/places-autocomplete
-	autocomplete stuff ^^^
-*/
+//
+// I decided to reskin this for fun after working on it
+// with a team. Group 4, INFO 343A. 
 
 // Cam's Google API key (with Places allowed)
 var key = 'AIzaSyBY55ORyqjG8LaN8_h3KIUQ6QR7WbmRz4A';
 
-// restaurants variable to hold JSON's return data
-var restaurants;
 
 var infoWindow;
+var service;
+var map;
 var placemarkers = [];
-
 var marker;
+var inputText;
 
 
-// on load
+// on load set up the map, inputs, autocomplete, 
+// infoWindow, marker, and listeners.
 $(function() {
 
-	// UW's Latitude/Longitude
-	var locationUW = new google.maps.LatLng(47.655335, -122.303519);
+	var titleVisible = true;
+
+	// Some starting locations of various cities
+	// to randomly select as default map center
+	var startingLocations = [
+		[-33.8674869, 151.2069902], 		// Sydney
+		[55.953252, -3.188267], 			// Edinburgh
+		[47.6062095, -122.3320708], 		// Seattle
+		[40.7143528, -74.00597309999999], 	// New York
+		[48.856614, 2.3522219],				// Paris
+		[30.0444196, 31.2357116] 			// Cairo
+	];
 
 	// try to get the starting location, but if 
 	// they don't allow it (or can't), use UW as
 	// the default.
-	var location = getStartingLocation();
-	if(!location) {
-		location = locationUW;
-	}
 
 	// set up the map at the determined location
-	var map = setupMap(location);
+	var map = setupMap();
+
+	// center the map either on the location of
+	// this device (if possible && allowed), or
+	// or one of the lovely random starting locs
+	setMapCenter(map, startingLocations);
+
+	// PlacesService object
+	service = new google.maps.places.PlacesService(map);
 
 	// set up info window (info popups on mapmarkers)
 	infoWindow = new google.maps.InfoWindow();
@@ -56,13 +61,21 @@ $(function() {
 	// input textbox using Google's autocomplete. 
 	var input = $('.location')[0];
 	var autocomplete = new google.maps.places.Autocomplete(input);
+	
 
-	// make a map marker for current location
+	// make a map marker for the map
 	marker = new google.maps.Marker({
 		map: map
 	});
 
 	google.maps.event.addListener(autocomplete, 'place_changed', function() {
+		if(titleVisible) {
+			$('.title').hide("slow");
+			titleVisible = false;
+		}
+
+		inputText = $('.location').val().trim();
+
 		infoWindow.close();
 		marker.setVisible(false);
 		var place = autocomplete.getPlace();
@@ -71,14 +84,10 @@ $(function() {
 		}
 
 		map.setCenter(place.geometry.location);
-		map.setZoom(17);
 
 		marker.setIcon(({
 			url: 'http://maps.gstatic.com/mapfiles/place_api/icons/geocode-71.png',
-			size: new google.maps.Size(71, 71),
-			scaledSize: new google.maps.Size(35, 35),
-			anchor: new google.maps.Point(17, 34),
-			origin: new google.maps.Point(0, 0)
+			scaledSize: new google.maps.Size(48, 48)
 		}));
 		marker.setPosition(place.geometry.location);
 		marker.setVisible(true);
@@ -86,46 +95,73 @@ $(function() {
 		infoWindow.setContent(place.name);
 		infoWindow.open(map, marker);
 	});
-
+	
 	// add click listener to SPIN button
-	$('button.spin').click(function(){
+	$('.spin').click(function(){
 		if ($(".location").val().trim() == "") {
-			alert("No location is entered");
+			alert("Please enter a location");
 			return false;
+		} 
+		$('.input').animate({
+				top: "30"
+		});
+		if(titleVisible) {
+			$('.title').hide("slow");
+			titleVisible = false;
 		}
-		restaurants = getRestaurantData(map);
+
+		if(!inputText || $('.location').val().trim() != inputText) {
+			inputText = $('.location').val().trim();
+			locationSearch(inputText);
+		} else {
+			getRestaurantData(map, marker.getPosition());
+		}
 	});
+
+	
 }); // doc ready
 
 
 // Creates and displays a new Google Map object
 // in the HTML element with class="map-container".
 // Returns that map object.
-function setupMap(location) {
+function setupMap() {
 	map = new google.maps.Map($('.map-container')[0], {
 		mapTypeId: google.maps.MapTypeId.ROADMAP,
-		center: location,
-		zoom: 17 // apparently 17 looks 'good'
+		zoom: 15 // at 15 we can see city names
 	});
 
 	return map;
 }
 
 
-// try to get current location (if they allow us to),
-// otherwise, default is returned
-function getStartingLocation() {
-	var location = false;
+// Asks user for current location, but if that's
+// not possible or allowed, then a randomly 
+// selected location from a small pool is used.
+// Google Map object is then centered on that
+// location.
+function setMapCenter(map, startingLocations) {
+	var options = {
+		enableHighAccuracy: true,
+		timeout: 1000,
+		maximumAge: 0
+	}
 
-	// update the current location if allowed
-	// NOTE: This won't work when index.html
-	//       is ran as a local file--upload
-	//       to web host first.
-	navigator.geolocation.getCurrentPosition(function(place) {       
-		location = new google.maps.LatLng(place.coords.latitude, place.coords.longitude)
-	});
-
-	return location;
+	if (navigator.geolocation) {
+		navigator.geolocation.getCurrentPosition(function(place) {
+			map.setCenter(new google.maps.LatLng(place.coords.latitude, 
+				place.coords.longitude));
+			console.log('Map centered on ' + map.getCenter());
+		}, function() {
+			var randInt = Math.floor(Math.random() * startingLocations.length);
+			var location = startingLocations[randInt];
+			map.setCenter(new google.maps.LatLng(location[0], 
+				location[1]));
+			console.log('Map centered on ' + map.getCenter());
+		}, options);
+	} else {
+		alert("Geolocation is not supported by this browser.");
+	}
 }
 
 
@@ -140,10 +176,7 @@ function createMarker(latlng, map, icon, content, center,action) {
     if (icon) {
 		marker.setIcon(({
 			url: icon,
-			size: new google.maps.Size(32, 32),
-			origin: new google.maps.Point(0, 0),
-			anchor: new google.maps.Point(8, 16),
-			scaledSize: new google.maps.Size(16, 16)
+			scaledSize: new google.maps.Size(32, 32)
 		}));
 	}   
     if (center) {
@@ -169,50 +202,37 @@ function createMarker(latlng, map, icon, content, center,action) {
 // the Google Map object. We can specify params
 // like types (ie. restaurant), radius, opennow, 
 // etc.
-function placeSearch(map, request, update) {
-	var service = new google.maps.places.PlacesService(map);
+function placeSearch(map, request) {
+	
 
 	// Now pass the parameters in the request
 	// array to the service, and if it returns
 	// an OK result, make some markers
 	service.search(request, function(results,status) {
 		if (status == google.maps.places.PlacesServiceStatus.OK) {
-		
-			if(update) {
-				var randomIndex = Math.floor(Math.random() * results.length);
-				var randRestaurant = results[randomIndex];
-			}
-
 			placemarkers = clearMarkers(placemarkers);
 
 			var bounds = new google.maps.LatLngBounds();
 			for (var i = 0; i < results.length; ++i) { 
-                bounds.extend(results[i].geometry.location);
-				if(!update || i == randomIndex) {
-					placemarkers.push(createMarker(results[i].geometry.location,
-						map,
-						results[i].icon,
-						//'http://labs.google.com/ridefinder/images/mm_20_orange.png',
-						results[i].name,
-						false,
+				placemarkers.push(createMarker(results[i].geometry.location,
+					map,
+					//results[i].icon,
+					//'http://maps.google.com/mapfiles/kml/paddle/blu-blank.png',
+					'img/map-marker.png',
+					results[i].name,
+					false,
+					{
+						fnc:function() 
 						{
-							fnc:function() 
-							{
-								infoWindow.open();
-							}
-						})
-					);
-				}
+							infoWindow.open();
+						}
+					})
+				);
 			}
-			map.fitBounds(bounds);
 
-			// Update the restaurants variable to reflect
-			// new search results
-			if(update) {
-				restaurants = results;
-				getDetails(randRestaurant.reference);
-				renderRestaurants(results);
-			}
+			map.setZoom(15);
+
+			infoWindow.open(map, marker);
 
 		} else if (status == google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
 			alert("There were no matching results found. \nPlease expand your query parameters and try again.");
@@ -221,21 +241,39 @@ function placeSearch(map, request, update) {
 }
 
 
-function getDetails(restaurantRef) {
-	var service = new google.maps.places.PlacesService(map);
-
+// if the user doesn't select an autocomplete
+// location, conduct a textSearch query to
+// Google and use the first available lat/lng.
+function locationSearch(locationText) {
 	var request = {
-		reference: restaurantRef
-	}
+		query: locationText
+	};
 
-	service.getDetails(request, detailsCallback);
-}
+	service.textSearch(request, function(results, status) {
+		if(status == google.maps.places.PlacesServiceStatus.OK) {
+			var location = results[0].geometry.location
 
+			map.setCenter(location);
 
-function detailsCallback(place, status) {
-	if (status == google.maps.places.PlacesServiceStatus.OK) {
-		renderDetailedRestaurant(place);
-	}
+			marker.setIcon(({
+				url: 'http://maps.gstatic.com/mapfiles/place_api/icons/geocode-71.png',
+				scaledSize: new google.maps.Size(48, 48)
+			}));
+			marker.setPosition(location);
+			marker.setVisible(true);
+
+			getRestaurantData(map, marker.getPosition());
+
+			infoWindow.setContent(results[0].name);
+			infoWindow.open(map, marker);
+
+			return true;
+		} else {
+			alert('Location not found');
+
+			return false;
+		}
+	});
 }
 
 
@@ -251,44 +289,16 @@ function clearMarkers(placemarkers) {
 
 // Gather query parameters from html and pass it 
 // to the placeSearch function as a request
-function getRestaurantData(map) {
+function getRestaurantData(map, markerPosition) {
 
-	// convert location from text query to 
-	// (lat, lng) format by searching Google's
-	// places for the location given.
-	// TODO: what if they have no results? or
-	// 		 too many results?
-	textSearch(map, $('.location').val());
-}
-
-
-// Take the query inside the $('.location') element
-// and find the lat/lng of that location. Use that in
-// a placeSearch query with parameters gathered from
-// the HTML for items like radius, rankby, and minprice.
-function textSearch(map, query) {
 	var request = {
-		query: query
+		location: markerPosition,
+		radius: 1000,	// meters
+		minPriceLevel: 0,
+		maxPriceLevel: 4,
+		openNow: true,
+		types: ['restaurant']
 	};
-	service = new google.maps.places.PlacesService(map);
-	service.textSearch(request, function(results, status) {
-		if (status == google.maps.places.PlacesServiceStatus.OK) {
-			if(results.length > 0) {
-				currentLocation = results[0].geometry.location;
-			}
-		}
 
-		var radiusInMeters = parseInt($('.radius').val()) * 1609.34;	
-		// put query parameters into a request object
-		var request = {
-			location: currentLocation,
-			radius: radiusInMeters,
-			minPriceLevel: 0,
-			maxPriceLevel: parseInt($('.max-price').val()),
-			openNow: true,
-			types: ['restaurant', 'food', 'cafe', 'meal-takeaway']
-		};
-
-		placeSearch(map, request, true);
-	});
+	placeSearch(map, request);
 }
