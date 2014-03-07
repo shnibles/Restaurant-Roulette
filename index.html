@@ -4,21 +4,22 @@
         <meta charset="UTF-8">
         <meta name="author" content="">
         <title>Restaurant Roulette!</title>
-        <link href='http://fonts.googleapis.com/css?family=Montserrat+Subrayada' rel='stylesheet' type='text/css'>
         <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css">
+        <link rel="stylesheet" href="css/reset.css">
         <link rel="stylesheet" href="css/styles.css">
 	</head>
 	<body>
+		<div class="content-container">
+			<div class="map-container"></div>
 
+			<div class="menu-container">
+				<h1 class="title">Restaurant Roulette</h1>
+				<a class="spin input" type="button">Spin!</a>
+				<input class="location input" type="text" placeholder="Enter a location">
+			</div>
 
-		<div class="map-container"></div>
-
-		<h1 class="title">Restaurant Roulette</h1>
-
-		<input class="location input" type="text" placeholder="Enter a location">
-
-		<a class="spin input" type="button">Spin!</a>
-
+			<div class="detail-container"></div>
+		</div>
 
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
 		<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBY55ORyqjG8LaN8_h3KIUQ6QR7WbmRz4A&amp;sensor=true&amp;libraries=places"></script>

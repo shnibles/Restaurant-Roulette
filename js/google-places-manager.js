@@ -26,8 +26,6 @@ var inputText;
 // infoWindow, marker, and listeners.
 $(function() {
 
-	var titleVisible = true;
-
 	// Some starting locations of various cities
 	// to randomly select as default map center
 	var startingLocations = [
@@ -69,10 +67,6 @@ $(function() {
 	});
 
 	google.maps.event.addListener(autocomplete, 'place_changed', function() {
-		if(titleVisible) {
-			$('.title').hide("slow");
-			titleVisible = false;
-		}
 
 		inputText = $('.location').val().trim();
 
@@ -102,13 +96,6 @@ $(function() {
 			alert("Please enter a location");
 			return false;
 		} 
-		$('.input').animate({
-				top: "30"
-		});
-		if(titleVisible) {
-			$('.title').hide("slow");
-			titleVisible = false;
-		}
 
 		if(!inputText || $('.location').val().trim() != inputText) {
 			inputText = $('.location').val().trim();
